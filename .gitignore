@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+venv/
+env/
+.venv/
+backend/venv/
+backend/.venv/
+*.parquet
+faiss_index.bin

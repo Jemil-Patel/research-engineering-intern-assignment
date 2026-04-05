@@ -73,7 +73,8 @@ npm run dev
 **Environment variables:**
 ```
 GEMINI_API_KEY=
-NOMIC_API_KEY=          # only needed to re-upload embeddings
+NOMIC_API_KEY=          # only needed to re-upload <img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 23 08 AM" src="https://github.com/user-attachments/assets/7cd45ad4-f521-46fb-bc81-df328938f850" />
+embeddings
 NEXT_PUBLIC_API_URL=    # set to backend URL in production
 ```
 
@@ -91,4 +92,12 @@ NEXT_PUBLIC_API_URL=    # set to backend URL in production
 
 ## Screenshots
 
-> *(Insert screenshots)*
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 23 08 AM" src="https://github.com/user-attachments/assets/b10189ae-0d86-474d-b275-752b1cda56c4" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 22 52 AM" src="https://github.com/user-attachments/assets/3a53bba1-812a-4a9d-afc9-329bf95170a8" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 21 07 AM" src="https://github.com/user-attachments/assets/edeed00e-4a61-4e2d-9669-376e5530509a" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 21 44 AM" src="https://github.com/user-attachments/assets/27a011e8-ec95-450e-9e12-1479a7d2ab70" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 21 59 AM" src="https://github.com/user-attachments/assets/9c8bd9cc-9fe0-4702-a33b-cdae9507989a" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 20 53 AM" src="https://github.com/user-attachments/assets/bcbc8765-63d2-471c-8d1e-76c0ea599e05" />
+<img width="1440" height="932" alt="Screenshot 2026-04-06 at 1 22 27 AM" src="https://github.com/user-attachments/assets/bf31c3d3-25a4-474d-ae9d-d4ccc9f5724e" />
+
+

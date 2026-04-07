@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
 import os
-from backend.models.embedder import embedder
+from models.embedder import embedder
 
 router = APIRouter()
 

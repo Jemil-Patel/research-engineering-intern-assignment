@@ -71,17 +71,49 @@ def _load_topic_df(app: FastAPI):
     except Exception as e:
         print(f"Error loading topic_df: {e}")
 
+import concurrent.futures
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("STARTUP: about to initialize app state variables", flush=True)
     app.state.topic_model = None
     app.state.topic_df = None
     app.state.narrative_chapters = []
+    print("STARTUP: done initialize app state variables", flush=True)
 
+    print("STARTUP: about to get running event loop", flush=True)
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _load_topic_df, app)
-    loop.run_in_executor(None, narrative._build_narrative_cache, app)
+    print("STARTUP: done get running event loop", flush=True)
 
+    print("STARTUP: about to execute _load_topic_df", flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: _load_topic_df(app))
+        try:
+            result = future.result(timeout=30)
+            print("STARTUP: done execute _load_topic_df", flush=True)
+        except concurrent.futures.TimeoutError:
+            print("STARTUP: TIMEOUT on execute _load_topic_df after 30s", flush=True)
+            raise RuntimeError("Startup timed out on execute _load_topic_df")
+        except Exception as e:
+            print(f"STARTUP: FAILED execute _load_topic_df: {e}", flush=True)
+            raise
+
+    print("STARTUP: about to execute narrative._build_narrative_cache", flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: narrative._build_narrative_cache(app))
+        try:
+            result = future.result(timeout=30)
+            print("STARTUP: done execute narrative._build_narrative_cache", flush=True)
+        except concurrent.futures.TimeoutError:
+            print("STARTUP: TIMEOUT on execute narrative._build_narrative_cache after 30s", flush=True)
+            raise RuntimeError("Startup timed out on execute narrative._build_narrative_cache")
+        except Exception as e:
+            print(f"STARTUP: FAILED execute narrative._build_narrative_cache: {e}", flush=True)
+            raise
+
+    print("STARTUP: about to yield", flush=True)
     yield
+    print("STARTUP: done yield", flush=True)
 
 app = FastAPI(title="SimPPL Reddit Dashboard Backend", lifespan=lifespan)
 

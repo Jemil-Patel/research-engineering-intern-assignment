@@ -16,64 +16,62 @@ from sklearn.feature_extraction.text import CountVectorizer
 load_dotenv()
 
 # Import routers and Singletons
-from backend.routers import timeseries, network, search, clusters, summary, breakdown, chat, homepage, narrative
+from routers import timeseries, network, search, clusters, summary, breakdown, chat, homepage, narrative
+
+def get_model():
+    from bertopic.backend import FastEmbedBackend
+    return FastEmbedBackend("BAAI/bge-small-en-v1.5")
 
 def _build_topic_model(app: FastAPI):
-    print("Starting background BERTopic initialization...")
+    print("Loading pre-fitted BERTopic model...")
+    model_path = "backend/topic_model_saved" if not os.path.exists("topic_model_saved") else "topic_model_saved"
     parquet_path = "backend/posts.parquet" if not os.path.exists("posts.parquet") else "posts.parquet"
+
+    if not os.path.exists(model_path):
+        print("Pre-fitted model not found. Skipping topic modeling.")
+        return
+
     if not os.path.exists(parquet_path):
         print("Dataset not found. Skipping topic modeling.")
         return
-        
+
     try:
+        from bertopic import BERTopic
+        import pandas as pd
+
+        topic_model = BERTopic.load(model_path)
+        print("Model loaded.")
+
         df = pd.read_parquet(parquet_path)
-        if df.empty:
-            print("Dataset empty.")
-            return
-            
         df['text'] = df['text'].astype(str).fillna("")
-        docs = df['text'].tolist()
-        
-        vectorizer_model = CountVectorizer(stop_words="english", max_features=5000)
-        
-        # 'auto' allows BERTopic to run standard HDBSCAN clustering without excessive memory
-        topic_model = BERTopic(
-            language="english", 
-            calculate_probabilities=False, 
-            nr_topics="auto",
-            vectorizer_model=vectorizer_model,
-        )
-        
-        print("Fitting BERTopic (this may take up to 60 seconds)...")
-        topics, _ = topic_model.fit_transform(docs)
-        
-        df['topic_id'] = topics
-        
+
         topic_info = topic_model.get_topic_info()
         label_dict = {}
         for _, row in topic_info.iterrows():
             tid = row['Topic']
             words_freq = topic_model.get_topic(tid)
-            if words_freq:
-                label_dict[tid] = ", ".join([w[0] for w in words_freq[:5]])
-            else:
-                label_dict[tid] = "Unknown"
-                
+            label_dict[tid] = ", ".join([w[0] for w in words_freq[:5]]) if words_freq else "Unknown"
+
+        docs = df['text'].tolist()
+        topics, _ = topic_model.transform(docs)  # transform, not fit_transform
+        df['topic_id'] = topics
         df['topic_label'] = df['topic_id'].map(label_dict)
-        
+
         keep_cols = ['text', 'subreddit', 'topic_id', 'topic_label']
-        if 'id' in df.columns: keep_cols.append('id')
-        if 'name' in df.columns and 'id' not in df.columns: 
+        if 'id' in df.columns:
+            keep_cols.append('id')
+        elif 'name' in df.columns:
             df['id'] = df['name']
             keep_cols.append('id')
-            
+
         app.state.topic_df = df[keep_cols].copy()
         app.state.topic_model = topic_model
-        print("Topic model ready")
+        print("Topic model ready.")
+
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"Error initializing BERTopic: {e}")
+        print(f"Error loading BERTopic model: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -108,6 +106,13 @@ app.include_router(breakdown.router, prefix="/api", tags=["breakdown"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(homepage.router, prefix="/api", tags=["homepage"])
 app.include_router(narrative.router, prefix="/api", tags=["narrative"])
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model_ready": app.state.topic_model is not None
+    }
 
 @app.get("/")
 def read_root():

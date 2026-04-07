@@ -1,7 +1,10 @@
 import json
 import pandas as pd
 import duckdb
-from sentence_transformers import SentenceTransformer
+try:
+    from fastembed import TextEmbedding
+except ImportError:
+    pass
 import faiss
 import numpy as np
 import os
@@ -89,9 +92,15 @@ def prepare_data():
     df.to_parquet(out_parquet, index=False)
 
     print("Computing embeddings...")
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    try:
+        model = TextEmbedding("BAAI/bge-small-en-v1.5")
+    except NameError:
+        print("fastembed not installed. Cannot compute embeddings.")
+        return
+
     texts = df['text'].tolist()
-    embeddings = model.encode(texts, show_progress_bar=True, convert_to_numpy=True)
+    embeddings_list = list(model.embed(texts))
+    embeddings = np.array(embeddings_list) if not isinstance(embeddings_list, np.ndarray) else embeddings_list
     embeddings = embeddings.astype('float32')
 
     print(f"Building and saving FAISS index to {out_faiss}...")

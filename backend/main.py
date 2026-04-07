@@ -1,18 +1,61 @@
-import os
-import asyncio
-import pandas as pd
-from contextlib import asynccontextmanager
+import sys
+print("=== STARTUP BEGIN ===", flush=True)
+
+print("--- Importing Standard Libraries ---", flush=True)
+try:
+    print("Importing os, asyncio, contextlib...", flush=True)
+    import os
+    import asyncio
+    from contextlib import asynccontextmanager
+    print("Standard Libraries OK", flush=True)
+except Exception as e:
+    print(f"FAILED importing standard libraries: {e}", flush=True)
+    raise
 
 os.environ["NUMBA_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+print("--- Importing Third-Party Libraries ---", flush=True)
+try:
+    print("Importing pandas...", flush=True)
+    import pandas as pd
+    print("pandas OK", flush=True)
+except Exception as e:
+    print(f"FAILED importing pandas: {e}", flush=True)
+    raise
 
-load_dotenv()
+try:
+    print("Importing fastapi...", flush=True)
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    print("fastapi OK", flush=True)
+except Exception as e:
+    print(f"FAILED importing fastapi: {e}", flush=True)
+    raise
 
-from routers import timeseries, network, search, clusters, summary, breakdown, chat, homepage, narrative
+try:
+    print("Importing dotenv...", flush=True)
+    from dotenv import load_dotenv
+    print("dotenv OK", flush=True)
+except Exception as e:
+    print(f"FAILED importing dotenv: {e}", flush=True)
+    raise
+
+try:
+    print("Loading .env file...", flush=True)
+    load_dotenv()
+    print(".env loaded OK", flush=True)
+except Exception as e:
+    print(f"FAILED to load .env file: {e}", flush=True)
+
+print("--- Importing Local Routers ---", flush=True)
+try:
+    print("Importing routers...", flush=True)
+    from routers import timeseries, network, search, clusters, summary, breakdown, chat, homepage, narrative
+    print("routers OK", flush=True)
+except Exception as e:
+    print(f"FAILED importing routers: {e}", flush=True)
+    raise
 
 def _load_topic_df(app: FastAPI):
     print("Loading pre-computed topic_df...")

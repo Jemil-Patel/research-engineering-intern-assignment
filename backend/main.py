@@ -9,89 +9,42 @@ os.environ["OMP_NUM_THREADS"] = "1"
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from bertopic import BERTopic
-from sklearn.feature_extraction.text import CountVectorizer
 
-# Load env variables
 load_dotenv()
 
-# Import routers and Singletons
 from routers import timeseries, network, search, clusters, summary, breakdown, chat, homepage, narrative
 
-def get_model():
-    from bertopic.backend import FastEmbedBackend
-    return FastEmbedBackend("BAAI/bge-small-en-v1.5")
-
-def _build_topic_model(app: FastAPI):
-    print("Loading pre-fitted BERTopic model...")
-    model_path = "backend/topic_model_saved" if not os.path.exists("topic_model_saved") else "topic_model_saved"
-    parquet_path = "backend/posts.parquet" if not os.path.exists("posts.parquet") else "posts.parquet"
-
-    if not os.path.exists(model_path):
-        print("Pre-fitted model not found. Skipping topic modeling.")
+def _load_topic_df(app: FastAPI):
+    print("Loading pre-computed topic_df...")
+    path = "backend/topic_df.parquet" if not os.path.exists("topic_df.parquet") else "topic_df.parquet"
+    if not os.path.exists(path):
+        print("topic_df.parquet not found. Cluster features will be unavailable.")
         return
-
-    if not os.path.exists(parquet_path):
-        print("Dataset not found. Skipping topic modeling.")
-        return
-
     try:
-        from bertopic import BERTopic
-        import pandas as pd
-
-        topic_model = BERTopic.load(model_path)
-        print("Model loaded.")
-
-        df = pd.read_parquet(parquet_path)
-        df['text'] = df['text'].astype(str).fillna("")
-
-        topic_info = topic_model.get_topic_info()
-        label_dict = {}
-        for _, row in topic_info.iterrows():
-            tid = row['Topic']
-            words_freq = topic_model.get_topic(tid)
-            label_dict[tid] = ", ".join([w[0] for w in words_freq[:5]]) if words_freq else "Unknown"
-
-        docs = df['text'].tolist()
-        topics, _ = topic_model.transform(docs)  # transform, not fit_transform
-        df['topic_id'] = topics
-        df['topic_label'] = df['topic_id'].map(label_dict)
-
-        keep_cols = ['text', 'subreddit', 'topic_id', 'topic_label']
-        if 'id' in df.columns:
-            keep_cols.append('id')
-        elif 'name' in df.columns:
-            df['id'] = df['name']
-            keep_cols.append('id')
-
-        app.state.topic_df = df[keep_cols].copy()
-        app.state.topic_model = topic_model
-        print("Topic model ready.")
-
+        df = pd.read_parquet(path)
+        app.state.topic_df = df
+        app.state.topic_model = None  # no model needed — clusters.py has TF-IDF fallback
+        print(f"topic_df loaded: {len(df)} rows")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"Error loading BERTopic model: {e}")
+        print(f"Error loading topic_df: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.topic_model = None
     app.state.topic_df = None
     app.state.narrative_chapters = []
-    
-    # Run the intensive background tasks unblocking server init
+
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _build_topic_model, app)
+    loop.run_in_executor(None, _load_topic_df, app)
     loop.run_in_executor(None, narrative._build_narrative_cache, app)
-    
+
     yield
 
 app = FastAPI(title="SimPPL Reddit Dashboard Backend", lifespan=lifespan)
 
-# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -111,7 +64,8 @@ app.include_router(narrative.router, prefix="/api", tags=["narrative"])
 def health():
     return {
         "status": "ok",
-        "model_ready": app.state.topic_model is not None
+        "topic_df_ready": getattr(app.state, "topic_df", None) is not None,
+        "narrative_ready": len(getattr(app.state, "narrative_chapters", [])) > 0
     }
 
 @app.get("/")

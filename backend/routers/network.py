@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
-from backend.models.graph import GraphManager
+from models.graph import GraphManager
 
 router = APIRouter()
 graph_manager = GraphManager()
